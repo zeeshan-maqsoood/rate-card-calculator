@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import puppeteer from "puppeteer"
 
 export async function POST(request: NextRequest) {
   try {
@@ -211,35 +210,60 @@ export async function POST(request: NextRequest) {
       </html>
     `
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: "networkidle0" })
-
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20px",
-        right: "20px",
-        bottom: "20px",
-        left: "20px",
-      },
-    })
-
-    await browser.close()
-
-    return new NextResponse(pdf, {
+    // Replace this with your API2PDF API key
+    const apiKey = process.env.API2PDF_KEY || 'YOUR_API2PDF_KEY'
+    
+    console.log("Using API key:", apiKey.substring(0, 3) + "..." + apiKey.substring(apiKey.length - 3))
+    
+    // Call the API2PDF service
+    const response = await fetch('https://v2018.api2pdf.com/chrome/html', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="rate-card-${Date.now()}.pdf"`,
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        html: html,
+        inlinePdf: false, // Changed to false to use URL method instead
+        fileName: `rate-card-${Date.now()}.pdf`,
+        options: {
+          format: "A4",
+          printBackground: true,
+          margin: {
+            top: "20px",
+            right: "20px",
+            bottom: "20px",
+            left: "20px",
+          }
+        }
+      }),
     })
+
+    const result = await response.json()
+    console.log("API2PDF response:", JSON.stringify(result))
+    
+    if (!result.success) {
+      console.error("API2PDF error:", result.error || "Unknown error")
+      throw new Error('PDF generation failed: ' + (result.error || "Unknown error"))
+    }
+    
+    // Use the PDF URL from the response
+    if (result.pdf) {
+      // Fetch the PDF from the URL
+      const pdfResponse = await fetch(result.pdf)
+      const pdfBlob = await pdfResponse.arrayBuffer()
+      
+      return new NextResponse(pdfBlob, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="rate-card-${Date.now()}.pdf"`,
+        },
+      })
+    } else {
+      throw new Error('PDF URL not found in API2PDF response')
+    }
   } catch (error) {
     console.error("PDF generation error:", error)
-    return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to generate PDF: " + error.message }, { status: 500 })
   }
 }
