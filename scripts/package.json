@@ -1,0 +1,16 @@
+{
+  "name": "hub71-calculator-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Hub71 Calculator database setup and data import",
+  "private": true,
+  "scripts": {
+    "import-spreadsheet": "node import-spreadsheet-data.js",
+    "simple-import": "node simple-import.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.33.1",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^2.6.7",
+    "xlsx": "^0.18.5"
+  }
+}
